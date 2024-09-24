@@ -1,6 +1,6 @@
 [package]
 name = "gitignoregen"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Patrik Laurell <patrik.laurell@gmail.com>"]
 edition = "2021"
 description = "A minimal CLI wrapper around Toptal gitignore"
