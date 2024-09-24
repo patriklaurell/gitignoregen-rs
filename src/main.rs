@@ -1,15 +1,26 @@
+use ctrlc; // Add this import
 use dialoguer::{theme::ColorfulTheme, FuzzySelect, Select};
 use reqwest;
 use std::collections::HashSet;
 use std::io::Write;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use termion::cursor::Show; // Add this import
-use termion::raw::IntoRawMode;
 use tokio; // Add this import
 
 const API_URL: &str = "https://www.toptal.com/developers/gitignore/api";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let running = Arc::new(AtomicBool::new(true));
+    let r = running.clone();
+
+    ctrlc::set_handler(move || {
+        r.store(false, Ordering::SeqCst);
+        reset_terminal();
+        std::process::exit(0);
+    })?;
+
     let response = reqwest::get(format!("{}/list", API_URL)).await?;
     let mut keywords: Vec<String> = response
         .text()
@@ -19,19 +30,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .map(|s| s.trim().to_string())
         .collect();
     keywords.insert(0, "Generate .gitignore".to_string());
-    println!("{:?}", keywords);
 
     let mut chosen_keywords = HashSet::new();
 
     println!("Please type the languages and operating systems you will use. Enter to generate.");
 
     loop {
-        let input = FuzzySelect::with_theme(&ColorfulTheme::default())
+        if !running.load(Ordering::SeqCst) {
+            break;
+        }
+
+        let input = match FuzzySelect::with_theme(&ColorfulTheme::default())
             .with_prompt("> ")
             .items(&keywords)
             .default(0)
             .max_length(8) // Show only the top 8 options
-            .interact()?;
+            .interact_opt()?
+        {
+            Some(index) => index,
+            None => {
+                // Handle Ctrl-D (EOF)
+                println!("EOF detected. Exiting...");
+                break;
+            }
+        };
 
         if input == 0 {
             let confirm = Select::with_theme(&ColorfulTheme::default())
@@ -74,9 +96,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     file.write_all(content.as_bytes())?;
 
     // Ensure cursor is shown before exiting
-    let stdout = std::io::stdout();
-    let mut stdout = stdout.lock().into_raw_mode()?;
-    write!(stdout, "{}", Show)?;
+    reset_terminal();
 
     Ok(())
+}
+
+fn reset_terminal() {
+    // Ensure cursor is shown before exiting
+    let mut stdout = std::io::stdout();
+    write!(stdout, "{}", Show).unwrap();
+    stdout.flush().unwrap();
 }
