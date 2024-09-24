@@ -3,6 +3,10 @@ name = "gitignoregen"
 version = "0.1.0"
 authors = ["Patrik Laurell <patrik.laurell@gmail.com>"]
 edition = "2021"
+description = "A minimal CLI wrapper around Toptal gitignore"
+readme = "README.md"
+repository = "https://github.com/patriklaurell/gitignoregen-rs"
+license = "MIT"
 
 [dependencies]
 dialoguer = { version = "0.11.0", features = ["fuzzy-select"] }
