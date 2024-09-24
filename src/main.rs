@@ -2,7 +2,9 @@ use dialoguer::{theme::ColorfulTheme, FuzzySelect, Select};
 use reqwest;
 use std::collections::HashSet;
 use std::io::Write;
-use tokio;
+use termion::cursor::Show; // Add this import
+use termion::raw::IntoRawMode;
+use tokio; // Add this import
 
 const API_URL: &str = "https://www.toptal.com/developers/gitignore/api";
 
@@ -70,6 +72,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut file = std::fs::File::create(".gitignore")?;
     file.write_all(content.as_bytes())?;
+
+    // Ensure cursor is shown before exiting
+    let stdout = std::io::stdout();
+    let mut stdout = stdout.lock().into_raw_mode()?;
+    write!(stdout, "{}", Show)?;
 
     Ok(())
 }
