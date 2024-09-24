@@ -1,5 +1,5 @@
-# Created by https://www.toptal.com/developers/gitignore/api/macos,rust,rust-analyzer
-# Edit at https://www.toptal.com/developers/gitignore?templates=macos,rust,rust-analyzer
+# Created by https://www.toptal.com/developers/gitignore/api/rust,macos,rust-analyzer
+# Edit at https://www.toptal.com/developers/gitignore?templates=rust,macos,rust-analyzer
 
 ### macOS ###
 # General
@@ -54,4 +54,4 @@ Cargo.lock
 rust-project.json
 
 
-# End of https://www.toptal.com/developers/gitignore/api/macos,rust,rust-analyzer
+# End of https://www.toptal.com/developers/gitignore/api/rust,macos,rust-analyzer
