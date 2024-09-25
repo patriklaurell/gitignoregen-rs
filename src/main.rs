@@ -1,3 +1,4 @@
+use clap::{Parser, Subcommand};
 use ctrlc; // Add this import
 use dialoguer::{theme::ColorfulTheme, FuzzySelect, Select};
 use reqwest;
@@ -8,10 +9,51 @@ use std::sync::Arc;
 use termion::cursor::Show; // Add this import
 use tokio; // Add this import
 
+#[derive(Parser)]
+struct Cli {
+    #[command(subcommand)]
+    command: Option<Commands>,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    Append,
+}
+
 const API_URL: &str = "https://www.toptal.com/developers/gitignore/api";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Handle append command
+    let cli = Cli::parse();
+    match cli.command {
+        Some(Commands::Append) => {
+            let content = get_gitignore_content(true).await?;
+            if content.is_none() {
+                return Ok(());
+            }
+            let mut file = std::fs::OpenOptions::new()
+                .append(true)
+                .open(".gitignore")?;
+            file.write_all(content.unwrap().as_bytes())?;
+        }
+        None => {
+            let content = get_gitignore_content(false).await?;
+            if content.is_none() {
+                return Ok(());
+            }
+            let mut file = std::fs::File::create(".gitignore")?;
+            file.write_all(content.unwrap().as_bytes())?;
+        }
+    }
+
+    // Ensure cursor is shown before exiting
+    reset_terminal();
+
+    Ok(())
+}
+
+async fn get_gitignore_content(append: bool) -> Result<Option<String>, Box<dyn std::error::Error>> {
     let running = Arc::new(AtomicBool::new(true));
     let r = running.clone();
 
@@ -29,11 +71,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .split(',')
         .map(|s| s.trim().to_string())
         .collect();
-    keywords.insert(0, "Generate .gitignore".to_string());
+
+    if append {
+        keywords.insert(0, "Append to .gitignore".to_string());
+    } else {
+        keywords.insert(0, "Generate .gitignore".to_string());
+    }
 
     let mut chosen_keywords = HashSet::new();
 
-    println!("Please type the languages and operating systems you will use. Enter to generate.");
+    println!("Please type the languages, editors, operating systems and IDEs you will use. Enter to generate.");
 
     loop {
         if !running.load(Ordering::SeqCst) {
@@ -67,7 +114,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 break;
             } else {
                 println!("Exiting...");
-                return Ok(());
+                return Ok(None);
             }
         } else {
             chosen_keywords.insert(keywords[input].clone());
@@ -76,7 +123,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     if chosen_keywords.is_empty() {
         println!("No languages or operating systems selected. Exiting...");
-        return Ok(());
+        return Ok(None);
     }
 
     println!("Generating...");
@@ -92,13 +139,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .await?;
     let content = response.text().await?;
 
-    let mut file = std::fs::File::create(".gitignore")?;
-    file.write_all(content.as_bytes())?;
-
-    // Ensure cursor is shown before exiting
-    reset_terminal();
-
-    Ok(())
+    Ok(Some(content))
 }
 
 fn reset_terminal() {
